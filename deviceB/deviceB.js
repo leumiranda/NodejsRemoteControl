@@ -1,67 +1,73 @@
 const mqtt = require('mqtt');
 const { exec } = require('child_process');
-const client = mqtt.connect('mqtt://test.mosquitto.org');
+
+const brokerUrl = 'mqtt://test.mosquitto.org';
+const supportTopic = 'suporte';
+
+const client = mqtt.connect(brokerUrl);
 
 client.on('connect', function () {
   console.log('Conectado ao broker MQTT');
 
-  client.subscribe('suporte', function (err) {
-    if (!err) {
-      console.log('Inscrito no tópico suporte');
+  client.subscribe(supportTopic, function (err) {
+    if (err) {
+      console.error('Erro ao se inscrever no tópico', supportTopic, err);
+      return;
     }
+    console.log('Inscrito no tópico', supportTopic);
   });
 });
 
 client.on('message', function (topic, message) {
-  if (topic === 'suporte' && message.toString() === 'reiniciar') {
-    console.log('Reiniciando o sistema...');
-    exec('shutdown /r', (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Erro: ${error.message}`);
-        return;
-      }
-      if (stderr) {
-        console.error(`Erro: ${stderr}`);
-        return;
-      }
-      console.log(`Saída: ${stdout}`);
-    });
+  if (topic !== supportTopic) {
+    console.warn('Mensagem recebida em um tópico desconhecido', topic, message.toString());
+    return;
   }
-  if (topic === 'suporte' && message.toString() === 'notepad') {
-    // Verifica o sistema operacional para determinar o comando a ser utilizado
-    const isWindows = process.platform === 'win32';
-    const command = isWindows ? 'notepad' : 'gedit'; // Windows ou Linux
 
-    // Executa o comando
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Erro ao tentar abrir o Bloco de Notas: ${error.message}`);
-        return;
-      }
-      console.log(`Saída padrão: ${stdout}`);
-      console.error(`Saída de erro: ${stderr}`);
-    });
-  }
-  if (topic === 'suporte' && message.toString() === 'calc') {
-    const isWindows = process.platform === 'win32';
-    const command = isWindows ? 'calc' : 'gnome-calculator';
-
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Erro ao tentar abrir a calculadora: ${error.message}`);
-        return;
-      }
-      console.log(`Saída padrão: ${stdout}`);
-      console.error(`Saída de erro: ${stderr}`);
-    });
-  }
-  if (topic === 'suporte' && message.toString() === 'browser') {
-    if (process.platform === 'win32') {
-      exec('start "" "http://www.example.com"');
-    } else if (process.platform === 'darwin') {
-      exec('open "http://www.example.com"');
-    } else {
-      exec('xdg-open "http://www.example.com"');
-    }
+  const command = message.toString();
+  switch (command) {
+    case 'reiniciar':
+      executeCommand('shutdown /r', 'Reiniciando o sistema...');
+      break;
+    case 'notepad':
+      executeCommand(process.platform === 'win32' ? 'notepad' : 'gedit', 'Abrindo o bloco de notas...');
+      break;
+    case 'calc':
+      executeCommand(process.platform === 'win32' ? 'calc' : 'gnome-calculator', 'Abrindo a calculadora...');
+      break;
+    case 'browser':
+      openBrowser('http://www.example.com');
+      break;
+    default:
+      console.warn('Comando desconhecido', command);
   }
 });
+
+function executeCommand(command, message) {
+  console.log(message);
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Erro ao executar o comando: ${error.message}`);
+      return;
+    }
+    if (stderr) {
+      console.error(`Erro ao executar o comando: ${stderr}`);
+      return;
+    }
+    console.log(`Comando executado com sucesso: ${stdout}`);
+  });
+}
+
+function openBrowser(url) {
+  switch (process.platform) {
+    case 'win32':
+      exec(`start "" "${url}"`);
+      console.log('Abrindo a URL...')
+      break;
+    case 'darwin':
+      exec(`open "${url}"`);
+      break;
+    default:
+      exec(`xdg-open "${url}"`);
+  }
+}
