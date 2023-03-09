@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "mqtt": "^4.3.7"
+    "mqtt": "^4.3.7",
+    "screenshot-desktop": "^0.0.0-development"
   }
 }

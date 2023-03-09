@@ -15,6 +15,7 @@ const options = {
   'notepad': 'notepad',
   'calc': 'calc',
   'browser': 'browser',
+  'print': 'print',
   'sair': 'sair'
 };
 
